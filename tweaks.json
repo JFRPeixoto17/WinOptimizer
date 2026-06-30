@@ -9,7 +9,7 @@
       "command": "powershell",
       "args": [
         "-Command",
-        "Checkpoint-Computer -Description 'WinOptimizer Backup' -RestorePointType 'MODIFY_SETTINGS'"
+        "New-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\SystemRestore' -Name SystemRestorePointCreationFrequency -Value 0 -PropertyType DWord -Force | Out-Null; Checkpoint-Computer -Description 'WinOptimizer Backup' -RestorePointType 'MODIFY_SETTINGS'"
       ],
       "undo_command": null
     },
@@ -111,11 +111,11 @@
       "recommended": false,
       "impact": "Privacy +",
       "command": "registry",
-      "registry_path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\LocationAndSensors",
-      "registry_name": "DisableLocation",
-      "registry_value": 1,
-      "registry_type": "DWORD",
-      "undo_value": 0
+      "registry_path": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\CapabilityAccessManager\\ConsentStore\\location",
+      "registry_name": "Value",
+      "registry_value": "Deny",
+      "registry_type": "String",
+      "undo_value": "Allow"
     },
     {
       "id": "startupApps",
@@ -191,9 +191,9 @@
       "recommended": true,
       "impact": "RAM ++",
       "command": "registry",
-      "registry_path": "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\BackgroundAccessApplications",
-      "registry_name": "GlobalUserDisabled",
-      "registry_value": 1,
+      "registry_path": "HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\AppPrivacy",
+      "registry_name": "LetAppsRunInBackground",
+      "registry_value": 2,
       "registry_type": "DWORD",
       "undo_value": 0
     },
@@ -421,12 +421,16 @@
       "description": "Removes mouse acceleration for more precise control. Preferred by gamers.",
       "recommended": false,
       "impact": "Gaming +",
-      "command": "registry",
-      "registry_path": "HKCU:\\Control Panel\\Mouse",
-      "registry_name": "MouseSpeed",
-      "registry_value": 0,
-      "registry_type": "String",
-      "undo_value": "1"
+      "command": "powershell",
+      "args": [
+        "-Command",
+        "Set-ItemProperty -Path 'HKCU:\\Control Panel\\Mouse' -Name MouseSpeed -Value 0; Set-ItemProperty -Path 'HKCU:\\Control Panel\\Mouse' -Name MouseThreshold1 -Value 0; Set-ItemProperty -Path 'HKCU:\\Control Panel\\Mouse' -Name MouseThreshold2 -Value 0"
+      ],
+      "undo_command": "powershell",
+      "undo_args": [
+        "-Command",
+        "Set-ItemProperty -Path 'HKCU:\\Control Panel\\Mouse' -Name MouseSpeed -Value 1; Set-ItemProperty -Path 'HKCU:\\Control Panel\\Mouse' -Name MouseThreshold1 -Value 6; Set-ItemProperty -Path 'HKCU:\\Control Panel\\Mouse' -Name MouseThreshold2 -Value 10"
+      ]
     },
     {
       "id": "memoryCompressionDisable",
@@ -605,15 +609,19 @@
     {
       "id": "autoBackup",
       "name": "Disable Automatic File Backup",
-      "description": "Disables Windows automatic backup (File History & OneDrive). Stops automatic backups to local drives and cloud. Prevents backup prompts and notifications. You can still backup manually when needed.",
+      "description": "Disables File History and the Windows Backup (SDRSVC) service so Windows stops automatic backups and backup prompts. System Restore is left intact (used by the restore-point feature). You can still back up manually when needed.",
       "recommended": true,
       "impact": "Storage ++",
       "command": "powershell",
       "args": [
         "-Command",
-        "Disable-ComputerRestore -Drive 'C:\\'; Set-Service -Name SDRSVC -StartupType Disabled"
+        "New-Item -Path 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\FileHistory' -Force | Out-Null; New-ItemProperty -Path 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\FileHistory' -Name Disabled -Value 1 -PropertyType DWord -Force | Out-Null; Set-Service -Name SDRSVC -StartupType Disabled -ErrorAction SilentlyContinue"
       ],
-      "undo_command": null
+      "undo_command": "powershell",
+      "undo_args": [
+        "-Command",
+        "Set-ItemProperty -Path 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\FileHistory' -Name Disabled -Value 0 -ErrorAction SilentlyContinue; Set-Service -Name SDRSVC -StartupType Manual -ErrorAction SilentlyContinue"
+      ]
     },
     {
       "id": "clipboard",
