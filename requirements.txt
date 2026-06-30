@@ -2,3 +2,5 @@ customtkinter>=5.2.0
 pillow>=10.0.0
 psutil>=5.9.0
 pywin32>=306
+# Note: licensing (license_manager.py) uses only the Python standard library
+# (hmac, hashlib, base64) — no extra dependencies required.

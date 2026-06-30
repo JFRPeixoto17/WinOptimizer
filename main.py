@@ -2,7 +2,7 @@
 WinOptimizer Pro - Professional Windows Performance Optimizer
 A safe, modern Windows optimization tool with Fluent Design dark theme
 
-Version: 1.2.0 - Free/Pro Edition (bug fixes)
+Version: 1.3.0 - Free/Pro Edition (licensing, real undo, state persistence)
 Author: João Filipe Reis Peixoto
 M.Sc. Student in Critical Computing System Engineering
 Copyright (c) 2025 João Filipe Reis Peixoto. All rights reserved.
@@ -19,6 +19,14 @@ Changelog v1.2.0:
   - Fixed: log_to_console AttributeError in restore_to_stock
   - Fixed: service_name (singular) vs service_names (list) handling
   - Fixed: KeyError on COLORS/SPACING fallback dict missing keys
+
+Changelog v1.3.0:
+  - Added real license system (name-bound HMAC keys, fully offline)
+  - IS_PRO is now driven by license_manager.is_pro()
+  - Implemented a working per-tweak Undo (undo_value / undo_args + service defaults)
+  - Applied tweaks persist across sessions (state.json in %APPDATA%/WinOptimizer)
+  - Restore-to-Stock no longer forces every service to Automatic (uses real defaults)
+  - Added in-app license activation dialog, tweak search and 'Select Recommended'
 """
 
 import customtkinter as ctk
@@ -36,7 +44,12 @@ import traceback
 #  EDITION FLAG — set to True to unlock Pro features.
 #  In production this should be driven by a license check.
 # ─────────────────────────────────────────────────────────────
-IS_PRO = False
+try:
+    import license_manager
+    IS_PRO = license_manager.is_pro()
+except Exception:
+    license_manager = None
+    IS_PRO = False
 
 # Import modern color scheme
 try:
@@ -75,6 +88,19 @@ FREE_TWEAK_IDS = {"restore", "tempfiles", "prefetch", "thumbnails", "windowsUpda
 # Tabs that require Pro
 PRO_ONLY_TABS = {"services", "performance", "privacy", "advanced"}
 
+# Correct Windows 11 default startup type per service. The Undo engine uses this
+# so reverting a service tweak never wrongly forces a service to Automatic
+# (e.g. RemoteRegistry must stay Disabled, Fax must stay Manual).
+SERVICE_DEFAULTS = {
+    "DiagTrack": "Automatic", "dmwappushservice": "Manual",
+    "TabletInputService": "Manual", "WSearch": "Automatic",
+    "SysMain": "Automatic", "DoSvc": "Automatic",
+    "RemoteRegistry": "Disabled", "SensorDataService": "Manual",
+    "SensrSvc": "Manual", "SensorService": "Manual",
+    "StorSvc": "Manual", "Spooler": "Automatic",
+    "bthserv": "Manual", "Fax": "Manual", "WerSvc": "Manual",
+}
+
 
 def get_resource_path(relative_path):
     """Absolute path to resource — works for dev and PyInstaller."""
@@ -108,12 +134,14 @@ class WinOptimizer(ctk.CTk):
         self.selected_tweaks: set = set()
         self.applied_tweaks:  set = set()
         self.tweaks_data:    dict = {}
+        self._search_query: str = ""
         self.current_tab: str = "cleanup" if not IS_PRO else "essential"
 
         # UI references populated during build
         self._tab_buttons: dict[str, ctk.CTkButton] = {}
 
         self.load_tweaks()
+        self.applied_tweaks = self._load_state()
 
         if not self.is_admin():
             self.show_admin_warning()
@@ -210,7 +238,7 @@ class WinOptimizer(ctk.CTk):
             text_color=COLORS["text_secondary"],
         ).pack(pady=SPACING["xs"])
 
-        version = "Version 1.2.0 - Free Edition" if not IS_PRO else "Version 1.2.0 - Pro Edition"
+        version = "Version 1.3.0 - Free Edition" if not IS_PRO else "Version 1.3.0 - Pro Edition"
         ctk.CTkLabel(
             header,
             text=version,
@@ -269,6 +297,21 @@ class WinOptimizer(ctk.CTk):
         tabs_frame.pack(fill="x", pady=(0, SPACING["md"]))
         tabs_frame.pack_propagate(False)
         self._build_tab_bar(tabs_frame)
+
+        # Search / quick-action toolbar
+        toolbar = ctk.CTkFrame(content, fg_color="transparent")
+        toolbar.pack(fill="x", pady=(0, SPACING["sm"]))
+        self.search_entry = ctk.CTkEntry(
+            toolbar, placeholder_text="\U0001F50E  Search tweaks...", height=36, width=320,
+            fg_color=COLORS["bg_secondary"], border_color=COLORS["border"],
+        )
+        self.search_entry.pack(side="left")
+        self.search_entry.bind("<KeyRelease>", self._on_search)
+        ctk.CTkButton(
+            toolbar, text="\u2713 Select Recommended", command=self._select_recommended,
+            width=200, height=36, font=("Segoe UI", 12, "bold"),
+            fg_color=COLORS["bg_tertiary"], hover_color=COLORS["accent_hover"],
+        ).pack(side="left", padx=SPACING["sm"])
 
         # Scrollable tweaks area
         self.tweaks_container = ctk.CTkScrollableFrame(
@@ -359,7 +402,7 @@ class WinOptimizer(ctk.CTk):
 
         ctk.CTkButton(
             row, text="✦ Upgrade to Pro",
-            command=dlg.destroy,          # TODO: replace with purchase flow
+            command=lambda: self._show_license_dialog(dlg),
             width=180, height=44,
             font=("Segoe UI", 13, "bold"),
             fg_color="#f5a623", hover_color="#e09010", text_color="#000000",
@@ -427,7 +470,10 @@ class WinOptimizer(ctk.CTk):
         else:
             tweaks = self.tweaks_data.get(self.current_tab, [])
 
+        q = (self._search_query or "").strip().lower()
         for tweak in tweaks:
+            if q and q not in (tweak.get("name", "") + " " + tweak.get("description", "")).lower():
+                continue
             self._create_tweak_card(tweak)
 
     def _create_tweak_card(self, tweak: dict):
@@ -529,6 +575,7 @@ class WinOptimizer(ctk.CTk):
         )
         self.apply_btn.configure(state="normal" if self.selected_tweaks else "disabled")
         self.render_tweaks()
+        self._save_state()
 
     def switch_tab(self, tab_id: str):
         self.current_tab = tab_id
@@ -737,7 +784,7 @@ class WinOptimizer(ctk.CTk):
         row.pack(pady=20)
         ctk.CTkButton(row, text="Cancel", command=dlg.destroy,
                       width=150, height=45, fg_color="#3a3a3a", hover_color="#4a4a4a").pack(side="left", padx=10)
-        ctk.CTkButton(row, text="Undo Now", command=lambda: self._undo_info(dlg),
+        ctk.CTkButton(row, text="Undo Now", command=lambda: self._run_undo_console(dlg),
                       width=150, height=45, fg_color="#ff6b35", hover_color="#ff8555").pack(side="left", padx=10)
 
     def _undo_info(self, dialog):
@@ -823,6 +870,8 @@ class WinOptimizer(ctk.CTk):
             for t in self.tweaks_data.get(cat, []):
                 if t.get("command") == "registry" and "undo_value" in t:
                     undo_ops.append({"type": "registry", "tweak": t})
+                elif t.get("command") == "powershell" and t.get("undo_command"):
+                    undo_ops.append({"type": "powershell", "tweak": t})
                 elif t.get("command") == "service":
                     raw = t.get("service_names") or t.get("service_name") or []
                     svcs = [raw] if isinstance(raw, str) else list(raw)
@@ -841,11 +890,19 @@ class WinOptimizer(ctk.CTk):
                     subprocess.run(["powershell", "-Command", ps],
                                    capture_output=True, text=True, timeout=30, creationflags=nw)
                     success += 1
+                elif op["type"] == "powershell":
+                    t = op["tweak"]
+                    cmd = [t["undo_command"], "-NoProfile", "-ExecutionPolicy", "Bypass"] + t.get("undo_args", [])
+                    subprocess.run(cmd, capture_output=True, text=True, timeout=30, creationflags=nw)
+                    success += 1
                 elif op["type"] == "service":
                     for svc in op["services"]:
+                        default = SERVICE_DEFAULTS.get(svc, "Manual")
+                        start = (f"Start-Service -Name '{svc}' -ErrorAction SilentlyContinue; "
+                                 if default == "Automatic" else "")
                         ps = (
-                            f"Set-Service -Name '{svc}' -StartupType Automatic -ErrorAction SilentlyContinue; "
-                            f"Start-Service -Name '{svc}' -ErrorAction SilentlyContinue"
+                            f"Set-Service -Name '{svc}' -StartupType {default} -ErrorAction SilentlyContinue; "
+                            f"{start}"
                         )
                         subprocess.run(["powershell", "-Command", ps],
                                        capture_output=True, text=True, timeout=30, creationflags=nw)
@@ -873,6 +930,205 @@ class WinOptimizer(ctk.CTk):
                       width=180, height=50, fg_color="#ff6b35", hover_color="#ff8555").pack(pady=5)
         ctk.CTkButton(done, text="Restart Later", command=done.destroy,
                       width=180, height=50, fg_color="#3a3a3a", hover_color="#4a4a4a").pack(pady=5)
+
+    # ──────────────────────────────────────────────────────────
+    #  State persistence (v1.3.0)
+    # ──────────────────────────────────────────────────────────
+
+    def _state_path(self):
+        try:
+            base = str(license_manager.config_dir())
+        except Exception:
+            base = os.path.join(os.environ.get("APPDATA", os.path.expanduser("~")), "WinOptimizer")
+            os.makedirs(base, exist_ok=True)
+        return os.path.join(base, "state.json")
+
+    def _load_state(self):
+        try:
+            with open(self._state_path(), "r", encoding="utf-8") as f:
+                return set(json.load(f).get("applied", []))
+        except Exception:
+            return set()
+
+    def _save_state(self):
+        try:
+            with open(self._state_path(), "w", encoding="utf-8") as f:
+                json.dump({"applied": sorted(self.applied_tweaks)}, f, indent=2)
+        except Exception:
+            pass
+
+    # ──────────────────────────────────────────────────────────
+    #  Search / quick actions (v1.3.0)
+    # ──────────────────────────────────────────────────────────
+
+    def _on_search(self, event=None):
+        self._search_query = self.search_entry.get() if hasattr(self, "search_entry") else ""
+        self.render_tweaks()
+
+    def _select_recommended(self):
+        pool = self._cleanup_tweaks() if self.current_tab == "cleanup" \
+            else self.tweaks_data.get(self.current_tab, [])
+        for t in pool:
+            if t.get("recommended"):
+                self.selected_tweaks.add(t["id"])
+        self.update_ui()
+
+    # ──────────────────────────────────────────────────────────
+    #  Real Undo engine (v1.3.0)
+    # ──────────────────────────────────────────────────────────
+
+    def _execute_undo(self, tweak, log_func):
+        nw = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+        ctype = tweak.get("command")
+        try:
+            if ctype == "registry":
+                if "undo_value" not in tweak:
+                    log_func("  (no undo value defined - skipped)")
+                    return False
+                ps = (
+                    f"Set-ItemProperty -Path '{tweak['registry_path']}' "
+                    f"-Name '{tweak['registry_name']}' -Value {tweak['undo_value']} "
+                    f"-Type {tweak.get('registry_type', 'DWORD')} -Force -ErrorAction SilentlyContinue"
+                )
+                r = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps],
+                                   capture_output=True, text=True, timeout=30, creationflags=nw)
+                return r.returncode == 0
+            if ctype == "service":
+                raw = tweak.get("service_names") or tweak.get("service_name") or []
+                svcs = [raw] if isinstance(raw, str) else list(raw)
+                parts = []
+                for s in svcs:
+                    default = SERVICE_DEFAULTS.get(s, "Manual")
+                    parts.append(f"Set-Service -Name '{s}' -StartupType {default} -ErrorAction SilentlyContinue")
+                    if default == "Automatic":
+                        parts.append(f"Start-Service -Name '{s}' -ErrorAction SilentlyContinue")
+                ps = "; ".join(parts)
+                log_func(f"  restoring service(s) {svcs} to default startup")
+                r = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps],
+                                   capture_output=True, text=True, timeout=30, creationflags=nw)
+                return r.returncode == 0
+            if ctype == "powershell":
+                if not tweak.get("undo_command"):
+                    log_func("  (no undo command - use System Restore to revert this one)")
+                    return False
+                cmd = [tweak["undo_command"], "-NoProfile", "-ExecutionPolicy", "Bypass"] + tweak.get("undo_args", [])
+                r = subprocess.run(cmd, capture_output=True, text=True, timeout=30, creationflags=nw)
+                return r.returncode == 0
+        except Exception as e:
+            log_func(f"  exception: {e}")
+        return False
+
+    def _run_undo_console(self, dialog):
+        dialog.destroy()
+        if not self.is_admin():
+            self.show_admin_warning()
+            return
+        targets = [t for t in self._all_tweaks() if t["id"] in self.applied_tweaks]
+        if not targets:
+            return
+
+        pdlg = ctk.CTkToplevel(self)
+        pdlg.title("Undoing Tweaks")
+        pdlg.geometry("800x600")
+        pdlg.transient(self)
+        pdlg.grab_set()
+        ctk.CTkLabel(pdlg, text="Reverting Optimizations...", font=("Segoe UI", 20, "bold")).pack(pady=20)
+        console = ctk.CTkTextbox(pdlg, font=("Consolas", 11), fg_color="#0a0a0a", text_color="#ffaa55", wrap="word")
+        console.pack(fill="both", expand=True, padx=20, pady=10)
+        pbar = ctk.CTkProgressBar(pdlg, width=700)
+        pbar.pack(pady=10)
+        pbar.set(0)
+        close_btn = ctk.CTkButton(pdlg, text="Close", command=pdlg.destroy, width=150, height=40, state="disabled")
+        close_btn.pack(pady=10)
+
+        def log(msg):
+            console.insert("end", f"{msg}\n")
+            console.see("end")
+            pdlg.update()
+
+        def run():
+            total = len(targets)
+            reverted = 0
+            for i, t in enumerate(targets):
+                log(f"[{i + 1}/{total}] Undo: {t['name']}")
+                try:
+                    if self._execute_undo(t, log):
+                        self.applied_tweaks.discard(t["id"])
+                        reverted += 1
+                        log("  done")
+                    else:
+                        log("  could not auto-revert")
+                except Exception as e:
+                    log(f"  error: {e}")
+                pbar.set((i + 1) / total)
+                pdlg.update()
+            log("=" * 60)
+            log(f"Reverted {reverted}/{total}. Some changes may need a restart.")
+            close_btn.configure(state="normal")
+            self.update_ui()
+
+        threading.Thread(target=run, daemon=True).start()
+
+    # ──────────────────────────────────────────────────────────
+    #  License activation (v1.3.0)
+    # ──────────────────────────────────────────────────────────
+
+    def _show_license_dialog(self, parent=None):
+        if parent is not None:
+            try:
+                parent.destroy()
+            except Exception:
+                pass
+        dlg = ctk.CTkToplevel(self)
+        dlg.title("Activate WinOptimizer Pro")
+        dlg.geometry("520x360")
+        dlg.resizable(False, False)
+        dlg.transient(self)
+        dlg.grab_set()
+
+        ctk.CTkLabel(dlg, text="Activate Pro", font=("Segoe UI", 24, "bold"),
+                     text_color="#34a853").pack(pady=(26, 6))
+        ctk.CTkLabel(dlg, text="Enter the name and key from your purchase confirmation.",
+                     font=("Segoe UI", 12), text_color=COLORS["text_secondary"]).pack(pady=(0, 14))
+
+        name_entry = ctk.CTkEntry(dlg, placeholder_text="Name / email", width=380, height=40)
+        name_entry.pack(pady=6)
+        key_entry = ctk.CTkEntry(dlg, placeholder_text="WO-XXXXX-XXXXX-XXXXX-XXXXX", width=380, height=40)
+        key_entry.pack(pady=6)
+
+        status = ctk.CTkLabel(dlg, text="", font=("Segoe UI", 12, "bold"))
+        status.pack(pady=6)
+
+        def activate():
+            name = name_entry.get().strip()
+            key = key_entry.get().strip()
+            if license_manager is None:
+                status.configure(text="Licensing module unavailable.", text_color="#f87171")
+                return
+            if license_manager.save_license(name, key):
+                globals()["IS_PRO"] = True
+                status.configure(text="Activated! Unlocking Pro...", text_color="#34a853")
+                self.after(700, lambda: (dlg.destroy(), self._rebuild_ui()))
+            else:
+                status.configure(text="Invalid name / key combination.", text_color="#f87171")
+
+        row = ctk.CTkFrame(dlg, fg_color="transparent")
+        row.pack(pady=14)
+        ctk.CTkButton(row, text="Activate", command=activate, width=160, height=44,
+                      font=("Segoe UI", 13, "bold"), fg_color="#34a853",
+                      hover_color="#2c8c46").pack(side="left", padx=8)
+        ctk.CTkButton(row, text="Cancel", command=dlg.destroy, width=120, height=44,
+                      fg_color=COLORS["bg_tertiary"], hover_color=COLORS["border"]).pack(side="left", padx=8)
+
+    def _rebuild_ui(self):
+        for w in self.winfo_children():
+            try:
+                w.destroy()
+            except Exception:
+                pass
+        self.current_tab = "essential" if IS_PRO else "cleanup"
+        self._search_query = ""
+        self.create_ui()
 
 
 def main():

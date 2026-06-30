@@ -3,6 +3,8 @@
 **Professional Windows Performance Optimizer**  
 A safe, modern Windows optimization tool with beautiful UI and 60+ tested tweaks.
 
+**Latest: v1.3.0** — real license system, working per-tweak Undo, cross-session state, in-app activation, tweak search, and an Inno Setup installer.
+
 **Author:** João Filipe Reis Peixoto  
 **M.Sc. Student in Critical Computing System Engineering**  
 **Copyright © 2025 João Filipe Reis Peixoto. All rights reserved.**
@@ -44,13 +46,16 @@ Quick steps:
 WinOptimizer/
 ├── main.py              # Main application
 ├── theme.py             # UI colors (smooth & refined)
-├── tweaks.json          # All 60 optimizations
+├── license_manager.py   # Offline license validation (HMAC keys)
+├── keygen.py            # DEV tool: mint Pro keys (do not ship)
+├── tweaks.json          # All 60 optimizations (Win11-audited)
 ├── requirements.txt     # Python dependencies
 ├── build_professional.ps1  # Build .exe
 ├── dist/
 │   └── WinOptimizerPro.exe  # Ready to use (19.34 MB)
 └── installer/
     ├── Install.ps1      # PowerShell installer
+    ├── WinOptimizer.iss # Inno Setup installer script
     └── README.md        # Installation guide
 `
 
@@ -102,6 +107,40 @@ python main.py
 - Dynamic tick management
 - GPU hardware scheduling
 - Game mode enhancements
+
+---
+
+## 🔑 Licensing (Free vs Pro)
+
+WinOptimizer ships as **Free** by default. Pro unlocks the Services, Performance,
+Privacy and Advanced tabs plus Quick Presets.
+
+**For users:** open *Upgrade to Pro → Activate*, then paste your name and key.
+The key is validated fully offline and stored in `%APPDATA%\\WinOptimizer\\license.json`.
+
+**For the author (issuing keys):**
+
+```powershell
+python keygen.py "customer@email.com"
+# -> prints: WO-XXXXX-XXXXX-XXXXX-XXXXX
+```
+
+Keys are name-bound and signed with HMAC-SHA256. Change the `_SECRET` in
+`license_manager.py` once before issuing real keys, then keep it private.
+`keygen.py` is a developer tool and must **not** be included in the public build.
+
+---
+
+## 🆕 What's new in 1.3.0
+
+- **Real license system** — offline, name-bound keys; `IS_PRO` now reflects an actual check.
+- **Working Undo** — reverts registry/service/PowerShell tweaks using each tweak's
+  defined undo, with a per-service default-startup map (no more forcing everything to Automatic).
+- **State persistence** — applied tweaks are remembered between sessions.
+- **In-app activation**, **tweak search**, and a **Select Recommended** button.
+- **Inno Setup installer** (`installer/WinOptimizer.iss`).
+- **Win11 command audit (v1.2.1)** — fixed location tracking, background apps, mouse
+  acceleration, and an `autoBackup` bug that wrongly disabled System Restore.
 
 ---
 
