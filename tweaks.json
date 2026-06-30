@@ -7,7 +7,10 @@
       "recommended": true,
       "impact": "Safety",
       "command": "powershell",
-      "args": ["-Command", "Checkpoint-Computer -Description 'WinOptimizer Backup' -RestorePointType 'MODIFY_SETTINGS'"],
+      "args": [
+        "-Command",
+        "Checkpoint-Computer -Description 'WinOptimizer Backup' -RestorePointType 'MODIFY_SETTINGS'"
+      ],
       "undo_command": null
     },
     {
@@ -17,7 +20,10 @@
       "recommended": true,
       "impact": "Storage ++",
       "command": "powershell",
-      "args": ["-Command", "Remove-Item -Path $env:TEMP\\* -Recurse -Force -ErrorAction SilentlyContinue; Remove-Item -Path C:\\Windows\\Temp\\* -Recurse -Force -ErrorAction SilentlyContinue"],
+      "args": [
+        "-Command",
+        "Remove-Item -Path $env:TEMP\\* -Recurse -Force -ErrorAction SilentlyContinue; Remove-Item -Path C:\\Windows\\Temp\\* -Recurse -Force -ErrorAction SilentlyContinue"
+      ],
       "undo_command": null
     },
     {
@@ -27,7 +33,10 @@
       "recommended": true,
       "impact": "Storage +",
       "command": "powershell",
-      "args": ["-Command", "Remove-Item -Path C:\\Windows\\Prefetch\\* -Force -ErrorAction SilentlyContinue"],
+      "args": [
+        "-Command",
+        "Remove-Item -Path C:\\Windows\\Prefetch\\* -Force -ErrorAction SilentlyContinue"
+      ],
       "undo_command": null
     },
     {
@@ -37,7 +46,10 @@
       "recommended": false,
       "impact": "Storage +",
       "command": "powershell",
-      "args": ["-Command", "Remove-Item -Path $env:LOCALAPPDATA\\Microsoft\\Windows\\Explorer\\thumbcache_*.db -Force -ErrorAction SilentlyContinue"],
+      "args": [
+        "-Command",
+        "Remove-Item -Path $env:LOCALAPPDATA\\Microsoft\\Windows\\Explorer\\thumbcache_*.db -Force -ErrorAction SilentlyContinue"
+      ],
       "undo_command": null
     },
     {
@@ -47,7 +59,10 @@
       "recommended": true,
       "impact": "Storage ++",
       "command": "powershell",
-      "args": ["-Command", "Stop-Service -Name wuauserv -Force; Remove-Item -Path C:\\Windows\\SoftwareDistribution\\Download\\* -Recurse -Force -ErrorAction SilentlyContinue; Start-Service -Name wuauserv"],
+      "args": [
+        "-Command",
+        "Stop-Service -Name wuauserv -Force; Remove-Item -Path C:\\Windows\\SoftwareDistribution\\Download\\* -Recurse -Force -ErrorAction SilentlyContinue; Start-Service -Name wuauserv"
+      ],
       "undo_command": null
     },
     {
@@ -109,7 +124,10 @@
       "recommended": true,
       "impact": "Boot Time ++",
       "command": "powershell",
-      "args": ["-Command", "Get-CimInstance -ClassName Win32_StartupCommand | Where-Object {$_.Name -notmatch 'SecurityHealth|OneDrive'} | ForEach-Object { $name = $_.Name; reg add 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\Run' /v \"$name\" /t REG_BINARY /d 0300000000000000000000 /f 2>$null }"],
+      "args": [
+        "-Command",
+        "Get-CimInstance -ClassName Win32_StartupCommand | Where-Object {$_.Name -notmatch 'SecurityHealth|OneDrive'} | ForEach-Object { $name=$_.Name; reg add 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\Run' /v \"$name\" /t REG_BINARY /d 030000000000000000000000 /f 2>$null }"
+      ],
       "undo_command": null
     }
   ],
@@ -121,7 +139,12 @@
       "recommended": true,
       "impact": "RAM ++",
       "command": "service",
-      "service_names": ["DiagTrack", "dmwappushservice", "TabletInputService", "WSearch"],
+      "service_names": [
+        "DiagTrack",
+        "dmwappushservice",
+        "TabletInputService",
+        "WSearch"
+      ],
       "action": "manual"
     },
     {
@@ -131,7 +154,9 @@
       "recommended": true,
       "impact": "Disk I/O ++",
       "command": "service",
-      "service_names": ["SysMain"],
+      "service_names": [
+        "SysMain"
+      ],
       "action": "disable"
     },
     {
@@ -141,7 +166,9 @@
       "recommended": true,
       "impact": "Disk I/O ++",
       "command": "service",
-      "service_names": ["WSearch"],
+      "service_names": [
+        "WSearch"
+      ],
       "action": "manual"
     },
     {
@@ -152,7 +179,9 @@
       "impact": "Disk I/O ++",
       "drawback": "Slower search",
       "command": "service",
-      "service_names": ["WSearch"],
+      "service_names": [
+        "WSearch"
+      ],
       "action": "disable"
     },
     {
@@ -175,17 +204,9 @@
       "recommended": true,
       "impact": "Network ++",
       "command": "service",
-      "service_names": ["DoSvc"],
-      "action": "disable"
-    },
-    {
-      "id": "homegroup",
-      "name": "Disable HomeGroup Services",
-      "description": "Disables legacy HomeGroup networking. Most users don't need this. Frees resources.",
-      "recommended": true,
-      "impact": "RAM +",
-      "command": "service",
-      "service_names": ["HomeGroupListener", "HomeGroupProvider"],
+      "service_names": [
+        "DoSvc"
+      ],
       "action": "disable"
     },
     {
@@ -195,7 +216,9 @@
       "recommended": false,
       "impact": "Security +",
       "command": "service",
-      "service_names": ["RemoteRegistry"],
+      "service_names": [
+        "RemoteRegistry"
+      ],
       "action": "disable"
     },
     {
@@ -205,7 +228,11 @@
       "recommended": false,
       "impact": "RAM +",
       "command": "service",
-      "service_names": ["SensorDataService", "SensrSvc", "SensorService"],
+      "service_names": [
+        "SensorDataService",
+        "SensrSvc",
+        "SensorService"
+      ],
       "action": "disable"
     },
     {
@@ -215,7 +242,10 @@
       "recommended": true,
       "impact": "Privacy ++",
       "command": "service",
-      "service_names": ["DiagTrack", "dmwappushservice"],
+      "service_names": [
+        "DiagTrack",
+        "dmwappushservice"
+      ],
       "action": "disable"
     },
     {
@@ -225,7 +255,9 @@
       "recommended": false,
       "impact": "RAM +",
       "command": "service",
-      "service_names": ["StorSvc"],
+      "service_names": [
+        "StorSvc"
+      ],
       "action": "manual"
     },
     {
@@ -235,7 +267,9 @@
       "recommended": false,
       "impact": "RAM +",
       "command": "service",
-      "service_names": ["Spooler"],
+      "service_names": [
+        "Spooler"
+      ],
       "action": "disable"
     },
     {
@@ -245,7 +279,9 @@
       "recommended": false,
       "impact": "Battery +",
       "command": "service",
-      "service_names": ["bthserv"],
+      "service_names": [
+        "bthserv"
+      ],
       "action": "disable"
     },
     {
@@ -255,7 +291,9 @@
       "recommended": true,
       "impact": "RAM +",
       "command": "service",
-      "service_names": ["Fax"],
+      "service_names": [
+        "Fax"
+      ],
       "action": "disable"
     }
   ],
@@ -397,9 +435,15 @@
       "recommended": false,
       "impact": "CPU + / RAM -",
       "command": "powershell",
-      "args": ["-Command", "Disable-MMAgent -MemoryCompression"],
+      "args": [
+        "-Command",
+        "Disable-MMAgent -MemoryCompression"
+      ],
       "undo_command": "powershell",
-      "undo_args": ["-Command", "Enable-MMAgent -MemoryCompression"]
+      "undo_args": [
+        "-Command",
+        "Enable-MMAgent -MemoryCompression"
+      ]
     },
     {
       "id": "usePlatformTick",
@@ -408,9 +452,15 @@
       "recommended": false,
       "impact": "Stability + / Power -",
       "command": "powershell",
-      "args": ["-Command", "bcdedit /set useplatformtick yes"],
+      "args": [
+        "-Command",
+        "bcdedit /set useplatformtick yes"
+      ],
       "undo_command": "powershell",
-      "undo_args": ["-Command", "bcdedit /deletevalue useplatformtick"]
+      "undo_args": [
+        "-Command",
+        "bcdedit /deletevalue useplatformtick"
+      ]
     },
     {
       "id": "disableDynamicTick",
@@ -419,9 +469,15 @@
       "recommended": false,
       "impact": "Latency - / Battery -",
       "command": "powershell",
-      "args": ["-Command", "bcdedit /set disabledynamictick yes"],
+      "args": [
+        "-Command",
+        "bcdedit /set disabledynamictick yes"
+      ],
       "undo_command": "powershell",
-      "undo_args": ["-Command", "bcdedit /set disabledynamictick no"]
+      "undo_args": [
+        "-Command",
+        "bcdedit /set disabledynamictick no"
+      ]
     }
   ],
   "privacy": [
@@ -444,12 +500,16 @@
       "description": "Prevents OneDrive from starting automatically. Saves resources if you don't use cloud sync.",
       "recommended": false,
       "impact": "RAM +",
-      "command": "registry",
-      "registry_path": "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\Run",
-      "registry_name": "OneDrive",
-      "registry_value": 3,
-      "registry_type": "DWORD",
-      "undo_value": 2
+      "command": "powershell",
+      "args": [
+        "-Command",
+        "$p='HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\Run'; if(-not(Test-Path $p)){New-Item -Path $p -Force | Out-Null}; New-ItemProperty -Path $p -Name 'OneDrive' -Value ([byte[]](3,0,0,0,0,0,0,0,0,0,0,0)) -PropertyType Binary -Force | Out-Null"
+      ],
+      "undo_command": "powershell",
+      "undo_args": [
+        "-Command",
+        "$p='HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\Run'; New-ItemProperty -Path $p -Name 'OneDrive' -Value ([byte[]](2,0,0,0,0,0,0,0,0,0,0,0)) -PropertyType Binary -Force | Out-Null"
+      ]
     },
     {
       "id": "widgets",
@@ -549,7 +609,10 @@
       "recommended": true,
       "impact": "Storage ++",
       "command": "powershell",
-      "args": ["-Command", "Disable-ComputerRestore -Drive 'C:\\'; Set-Service -Name SDRSVC -StartupType Disabled"],
+      "args": [
+        "-Command",
+        "Disable-ComputerRestore -Drive 'C:\\'; Set-Service -Name SDRSVC -StartupType Disabled"
+      ],
       "undo_command": null
     },
     {
@@ -575,9 +638,15 @@
       "impact": "Storage ++",
       "drawback": "No hibernation",
       "command": "powershell",
-      "args": ["-Command", "powercfg -h off"],
+      "args": [
+        "-Command",
+        "powercfg -h off"
+      ],
       "undo_command": "powershell",
-      "undo_args": ["-Command", "powercfg -h on"]
+      "undo_args": [
+        "-Command",
+        "powercfg -h on"
+      ]
     },
     {
       "id": "pagefile",
@@ -586,8 +655,15 @@
       "recommended": false,
       "impact": "Performance +",
       "command": "powershell",
-      "args": ["-Command", "$ram = (Get-CimInstance Win32_ComputerSystem).TotalPhysicalMemory / 1GB; $min = [math]::Round($ram * 0.5 * 1024); $max = [math]::Round($ram * 1024); wmic pagefileset set InitialSize=$min,MaximumSize=$max"],
-      "undo_command": null
+      "args": [
+        "-Command",
+        "$cs=Get-CimInstance Win32_ComputerSystem; if($cs.AutomaticManagedPagefile){ $cs | Set-CimInstance -Property @{AutomaticManagedPagefile=$false} }; $ram=[math]::Round($cs.TotalPhysicalMemory/1GB); $min=$ram*512; $max=$ram*1024; $pf=Get-CimInstance -ClassName Win32_PageFileSetting -ErrorAction SilentlyContinue; if($pf){ $pf | Set-CimInstance -Property @{InitialSize=$min;MaximumSize=$max} } else { New-CimInstance -ClassName Win32_PageFileSetting -Property @{Name='C:\\pagefile.sys';InitialSize=$min;MaximumSize=$max} }"
+      ],
+      "undo_command": "powershell",
+      "undo_args": [
+        "-Command",
+        "$cs=Get-CimInstance Win32_ComputerSystem; $cs | Set-CimInstance -Property @{AutomaticManagedPagefile=$true}"
+      ]
     },
     {
       "id": "reservedStorage",
@@ -597,9 +673,15 @@
       "impact": "Storage ++",
       "drawback": "Updates may fail",
       "command": "powershell",
-      "args": ["-Command", "Set-WindowsReservedStorageState -State Disabled"],
+      "args": [
+        "-Command",
+        "Set-WindowsReservedStorageState -State Disabled"
+      ],
       "undo_command": "powershell",
-      "undo_args": ["-Command", "Set-WindowsReservedStorageState -State Enabled"]
+      "undo_args": [
+        "-Command",
+        "Set-WindowsReservedStorageState -State Enabled"
+      ]
     },
     {
       "id": "lastAccess",
@@ -608,9 +690,15 @@
       "recommended": true,
       "impact": "SSD Life +",
       "command": "powershell",
-      "args": ["-Command", "fsutil behavior set disablelastaccess 1"],
+      "args": [
+        "-Command",
+        "fsutil behavior set disablelastaccess 1"
+      ],
       "undo_command": "powershell",
-      "undo_args": ["-Command", "fsutil behavior set disablelastaccess 0"]
+      "undo_args": [
+        "-Command",
+        "fsutil behavior set disablelastaccess 0"
+      ]
     },
     {
       "id": "shortNames",
@@ -619,9 +707,15 @@
       "recommended": false,
       "impact": "Performance +",
       "command": "powershell",
-      "args": ["-Command", "fsutil behavior set disable8dot3 1"],
+      "args": [
+        "-Command",
+        "fsutil behavior set disable8dot3 1"
+      ],
       "undo_command": "powershell",
-      "undo_args": ["-Command", "fsutil behavior set disable8dot3 0"]
+      "undo_args": [
+        "-Command",
+        "fsutil behavior set disable8dot3 0"
+      ]
     },
     {
       "id": "firewall",
@@ -630,8 +724,15 @@
       "recommended": false,
       "impact": "Privacy ++",
       "command": "powershell",
-      "args": ["-Command", "$domains = @('vortex.data.microsoft.com', 'watson.telemetry.microsoft.com', 'telemetry.microsoft.com'); foreach ($domain in $domains) { New-NetFirewallRule -DisplayName \"Block $domain\" -Direction Outbound -RemoteAddress $domain -Action Block -ErrorAction SilentlyContinue }"],
-      "undo_command": null
+      "args": [
+        "-Command",
+        "$domains=@('vortex.data.microsoft.com','watson.telemetry.microsoft.com','telemetry.microsoft.com'); foreach($d in $domains){ try{ $ips=(Resolve-DnsName -Name $d -ErrorAction Stop | Where-Object {$_.IPAddress}).IPAddress; if($ips){ New-NetFirewallRule -DisplayName \"Block $d\" -Direction Outbound -RemoteAddress $ips -Action Block -ErrorAction SilentlyContinue } }catch{} }"
+      ],
+      "undo_command": "powershell",
+      "undo_args": [
+        "-Command",
+        "Get-NetFirewallRule -DisplayName 'Block *.microsoft.com','Block vortex.data.microsoft.com','Block watson.telemetry.microsoft.com','Block telemetry.microsoft.com' -ErrorAction SilentlyContinue | Remove-NetFirewallRule"
+      ]
     },
     {
       "id": "networkThrottling",
@@ -652,12 +753,16 @@
       "description": "Reduces network latency for gaming. Better for real-time applications.",
       "recommended": false,
       "impact": "Gaming ++",
-      "command": "registry",
-      "registry_path": "HKLM:\\SYSTEM\\CurrentControlSet\\Services\\Tcpip\\Parameters\\Interfaces",
-      "registry_name": "TcpAckFrequency",
-      "registry_value": 1,
-      "registry_type": "DWORD",
-      "undo_value": 2
+      "command": "powershell",
+      "args": [
+        "-Command",
+        "$b='HKLM:\\SYSTEM\\CurrentControlSet\\Services\\Tcpip\\Parameters\\Interfaces'; Get-ChildItem $b | ForEach-Object { New-ItemProperty -Path $_.PSPath -Name TcpAckFrequency -Value 1 -PropertyType DWord -Force | Out-Null; New-ItemProperty -Path $_.PSPath -Name TCPNoDelay -Value 1 -PropertyType DWord -Force | Out-Null }"
+      ],
+      "undo_command": "powershell",
+      "undo_args": [
+        "-Command",
+        "$b='HKLM:\\SYSTEM\\CurrentControlSet\\Services\\Tcpip\\Parameters\\Interfaces'; Get-ChildItem $b | ForEach-Object { Remove-ItemProperty -Path $_.PSPath -Name TcpAckFrequency -ErrorAction SilentlyContinue; Remove-ItemProperty -Path $_.PSPath -Name TCPNoDelay -ErrorAction SilentlyContinue }"
+      ]
     },
     {
       "id": "tcpOptimization",
@@ -666,7 +771,10 @@
       "recommended": false,
       "impact": "Network ++",
       "command": "powershell",
-      "args": ["-Command", "netsh int tcp set global autotuninglevel=normal; netsh int tcp set global chimney=enabled; netsh int tcp set global dca=enabled; netsh int tcp set global netdma=enabled"],
+      "args": [
+        "-Command",
+        "netsh int tcp set global autotuninglevel=normal; netsh int tcp set global rss=enabled; netsh int tcp set global ecncapability=enabled"
+      ],
       "undo_command": null
     },
     {
@@ -691,7 +799,9 @@
       "recommended": false,
       "impact": "Performance +",
       "command": "service",
-      "service_names": ["WerSvc"],
+      "service_names": [
+        "WerSvc"
+      ],
       "action": "disable"
     },
     {
@@ -709,10 +819,100 @@
     }
   ],
   "presets": {
-    "recommended": ["restore", "tempfiles", "prefetch", "windowsUpdate", "telemetry", "activityHistory", "consumerFeatures", "startupApps", "services", "searchIndexing", "deliveryOptimization", "diagnosticTracking", "fax", "gameDVR", "menuDelay", "advertising", "feedback", "suggestions", "webSearch", "autoBackup", "lastAccess", "networkThrottling", "remoteAssistance"],
-    "maximum_performance": ["restore", "tempfiles", "prefetch", "thumbnails", "windowsUpdate", "telemetry", "activityHistory", "startupApps", "services", "superfetch", "searchIndexing", "windowsSearch", "backgroundApps", "deliveryOptimization", "homegroup", "diagnosticTracking", "storageService", "printSpooler", "fax", "gameDVR", "visualEffects", "transparencyEffects", "menuDelay", "lastAccess", "networkThrottling", "errorReporting"],
-    "basic_cleanup": ["tempfiles", "prefetch", "thumbnails", "windowsUpdate", "deliveryOptimization"],
-    "gaming_focused": ["restore", "services", "startupApps", "superfetch", "deliveryOptimization", "backgroundApps", "gameMode", "hags", "gameBar", "gameDVR", "fullscreenOpt", "mouseAcceleration", "memoryCompressionDisable", "usePlatformTick", "disableDynamicTick", "networkThrottling", "nagle"],
-    "privacy_focused": ["restore", "telemetry", "activityHistory", "consumerFeatures", "locationTracking", "diagnosticTracking", "cortana", "advertising", "feedback", "suggestions", "webSearch", "recentItems", "autoBackup", "clipboard", "firewall"]
+    "recommended": [
+      "restore",
+      "tempfiles",
+      "prefetch",
+      "windowsUpdate",
+      "telemetry",
+      "activityHistory",
+      "consumerFeatures",
+      "startupApps",
+      "services",
+      "searchIndexing",
+      "deliveryOptimization",
+      "diagnosticTracking",
+      "fax",
+      "gameDVR",
+      "menuDelay",
+      "advertising",
+      "feedback",
+      "suggestions",
+      "webSearch",
+      "autoBackup",
+      "lastAccess",
+      "networkThrottling",
+      "remoteAssistance"
+    ],
+    "maximum_performance": [
+      "restore",
+      "tempfiles",
+      "prefetch",
+      "thumbnails",
+      "windowsUpdate",
+      "telemetry",
+      "activityHistory",
+      "startupApps",
+      "services",
+      "superfetch",
+      "searchIndexing",
+      "windowsSearch",
+      "backgroundApps",
+      "deliveryOptimization",
+      "diagnosticTracking",
+      "storageService",
+      "printSpooler",
+      "fax",
+      "gameDVR",
+      "visualEffects",
+      "transparencyEffects",
+      "menuDelay",
+      "lastAccess",
+      "networkThrottling",
+      "errorReporting"
+    ],
+    "basic_cleanup": [
+      "tempfiles",
+      "prefetch",
+      "thumbnails",
+      "windowsUpdate",
+      "deliveryOptimization"
+    ],
+    "gaming_focused": [
+      "restore",
+      "services",
+      "startupApps",
+      "superfetch",
+      "deliveryOptimization",
+      "backgroundApps",
+      "gameMode",
+      "hags",
+      "gameBar",
+      "gameDVR",
+      "fullscreenOpt",
+      "mouseAcceleration",
+      "memoryCompressionDisable",
+      "usePlatformTick",
+      "disableDynamicTick",
+      "networkThrottling",
+      "nagle"
+    ],
+    "privacy_focused": [
+      "restore",
+      "telemetry",
+      "activityHistory",
+      "consumerFeatures",
+      "locationTracking",
+      "diagnosticTracking",
+      "cortana",
+      "advertising",
+      "feedback",
+      "suggestions",
+      "webSearch",
+      "recentItems",
+      "autoBackup",
+      "clipboard",
+      "firewall"
+    ]
   }
 }
