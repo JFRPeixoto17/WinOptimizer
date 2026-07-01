@@ -95,18 +95,35 @@ def save_license(name: str, key: str) -> bool:
     """Validate then persist. Returns True on success."""
     if not validate_key(name, key):
         return False
+    tmp = None
     try:
-        with open(license_path(), "w", encoding="utf-8") as f:
+        # Atomic write: dump to a temp file in the same directory, then
+        # os.replace() so a crash mid-write can never corrupt license.json.
+        target = license_path()
+        tmp = target.with_suffix(".json.tmp")
+        with open(tmp, "w", encoding="utf-8") as f:
             json.dump({"name": name.strip(), "key": _canonical_key(key)}, f, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, target)
         return True
     except Exception:
+        try:
+            if tmp is not None and tmp.exists():
+                os.remove(tmp)
+        except Exception:
+            pass
         return False
 
 
 def load_license() -> dict | None:
+    """Return the stored license dict, or None if missing/corrupted."""
     try:
         with open(license_path(), "r", encoding="utf-8") as f:
-            return json.load(f)
+            data = json.load(f)
+        if not isinstance(data, dict):
+            return None
+        return data
     except Exception:
         return None
 
@@ -129,6 +146,21 @@ def is_pro() -> bool:
 def licensee_name() -> str:
     data = load_license() or {}
     return data.get("name", "")
+
+
+def masked_key() -> str:
+    """Return the stored key with the middle groups hidden (for display)."""
+    data = load_license() or {}
+    key = data.get("key", "")
+    parts = key.split("-")
+    if len(parts) >= 3:
+        return "-".join([parts[0], parts[1]] + ["*****"] * (len(parts) - 3) + [parts[-1]])
+    return key
+
+
+def deactivate() -> None:
+    """Remove the stored license (alias of clear_license, clearer intent)."""
+    clear_license()
 
 
 if __name__ == "__main__":

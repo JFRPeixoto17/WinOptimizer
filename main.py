@@ -2,7 +2,7 @@
 WinOptimizer Pro - Professional Windows Performance Optimizer
 A safe, modern Windows optimization tool with Fluent Design dark theme
 
-Version: 1.3.0 - Free/Pro Edition (licensing, real undo, state persistence)
+Version: 1.3.1 - Free/Pro Edition (license management UI, hardened license storage)
 Author: João Filipe Reis Peixoto
 M.Sc. Student in Critical Computing System Engineering
 Copyright (c) 2025 João Filipe Reis Peixoto. All rights reserved.
@@ -221,7 +221,7 @@ class WinOptimizer(ctk.CTk):
         edition_text  = "FREE"         if not IS_PRO else "✦ PRO"
         edition_color = "#f5a623"      if not IS_PRO else "#34a853"
         edition_bg    = "#3a2800"      if not IS_PRO else "#1a3a1a"
-        ctk.CTkLabel(
+        badge = ctk.CTkLabel(
             row,
             text=edition_text,
             font=("Segoe UI", 12, "bold"),
@@ -229,7 +229,27 @@ class WinOptimizer(ctk.CTk):
             fg_color=edition_bg,
             corner_radius=6,
             padx=10, pady=4,
-        ).pack(side="left", padx=12, pady=(SPACING["md"] + 8, 0))
+            cursor="hand2",
+        )
+        badge.pack(side="left", padx=12, pady=(SPACING["md"] + 8, 0))
+        # Free -> open activation dialog; Pro -> open license management dialog.
+        if IS_PRO:
+            badge.bind("<Button-1>", lambda e: self._show_manage_license_dialog())
+        else:
+            badge.bind("<Button-1>", lambda e: self._show_license_dialog())
+
+        if IS_PRO and license_manager is not None:
+            who = license_manager.licensee_name()
+            if who:
+                lic_lbl = ctk.CTkLabel(
+                    row,
+                    text=f"Licensed to {who}",
+                    font=FONTS["body_small"],
+                    text_color=COLORS["text_tertiary"],
+                    cursor="hand2",
+                )
+                lic_lbl.pack(side="left", padx=4, pady=(SPACING["md"] + 8, 0))
+                lic_lbl.bind("<Button-1>", lambda e: self._show_manage_license_dialog())
 
         ctk.CTkLabel(
             header,
@@ -238,7 +258,7 @@ class WinOptimizer(ctk.CTk):
             text_color=COLORS["text_secondary"],
         ).pack(pady=SPACING["xs"])
 
-        version = "Version 1.3.0 - Free Edition" if not IS_PRO else "Version 1.3.0 - Pro Edition"
+        version = "Version 1.3.1 - Free Edition" if not IS_PRO else "Version 1.3.1 - Pro Edition"
         ctk.CTkLabel(
             header,
             text=version,
@@ -1118,6 +1138,61 @@ class WinOptimizer(ctk.CTk):
                       font=("Segoe UI", 13, "bold"), fg_color="#34a853",
                       hover_color="#2c8c46").pack(side="left", padx=8)
         ctk.CTkButton(row, text="Cancel", command=dlg.destroy, width=120, height=44,
+                      fg_color=COLORS["bg_tertiary"], hover_color=COLORS["border"]).pack(side="left", padx=8)
+
+    def _show_manage_license_dialog(self):
+        """Show current license details with a deactivate option (Pro only)."""
+        if license_manager is None:
+            return
+        dlg = ctk.CTkToplevel(self)
+        dlg.title("WinOptimizer Pro License")
+        dlg.geometry("520x340")
+        dlg.resizable(False, False)
+        dlg.transient(self)
+        dlg.grab_set()
+
+        ctk.CTkLabel(dlg, text="✦ Pro License", font=("Segoe UI", 24, "bold"),
+                     text_color="#34a853").pack(pady=(26, 10))
+
+        info = ctk.CTkFrame(dlg, fg_color=COLORS["bg_tertiary"], corner_radius=8)
+        info.pack(padx=30, pady=6, fill="x")
+        rows = [
+            ("Licensed to", license_manager.licensee_name() or "—"),
+            ("License key", license_manager.masked_key() or "—"),
+            ("Status", "Active"),
+        ]
+        for label, value in rows:
+            r = ctk.CTkFrame(info, fg_color="transparent")
+            r.pack(fill="x", padx=16, pady=6)
+            ctk.CTkLabel(r, text=label, font=("Segoe UI", 12, "bold"),
+                         text_color=COLORS["text_secondary"], width=110,
+                         anchor="w").pack(side="left")
+            ctk.CTkLabel(r, text=value, font=("Segoe UI", 12),
+                         text_color=COLORS["text_primary"], anchor="w").pack(side="left")
+
+        status = ctk.CTkLabel(dlg, text="", font=("Segoe UI", 12, "bold"))
+        status.pack(pady=4)
+
+        def deactivate():
+            # Two-step confirmation: first click arms, second click removes.
+            if getattr(deactivate, "_armed", False):
+                license_manager.deactivate()
+                globals()["IS_PRO"] = False
+                dlg.destroy()
+                self._rebuild_ui()
+            else:
+                deactivate._armed = True
+                status.configure(
+                    text="Click 'Deactivate' again to confirm. The app returns to Free mode.",
+                    text_color="#f5a623",
+                )
+
+        row = ctk.CTkFrame(dlg, fg_color="transparent")
+        row.pack(pady=12)
+        ctk.CTkButton(row, text="Deactivate", command=deactivate, width=160, height=44,
+                      font=("Segoe UI", 13, "bold"), fg_color="#ea4335",
+                      hover_color="#c5221f").pack(side="left", padx=8)
+        ctk.CTkButton(row, text="Close", command=dlg.destroy, width=120, height=44,
                       fg_color=COLORS["bg_tertiary"], hover_color=COLORS["border"]).pack(side="left", padx=8)
 
     def _rebuild_ui(self):
