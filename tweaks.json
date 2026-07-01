@@ -9,7 +9,7 @@
       "command": "powershell",
       "args": [
         "-Command",
-        "New-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\SystemRestore' -Name SystemRestorePointCreationFrequency -Value 0 -PropertyType DWord -Force | Out-Null; Checkpoint-Computer -Description 'WinOptimizer Backup' -RestorePointType 'MODIFY_SETTINGS'"
+        "New-ItemProperty -Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\SystemRestore' -Name SystemRestorePointCreationFrequency -Value 0 -PropertyType DWord -Force | Out-Null; try { Enable-ComputerRestore -Drive \"$env:SystemDrive\\\" -ErrorAction Stop } catch {}; Checkpoint-Computer -Description 'WinOptimizer Backup' -RestorePointType 'MODIFY_SETTINGS'"
       ],
       "undo_command": null
     },
@@ -61,7 +61,7 @@
       "command": "powershell",
       "args": [
         "-Command",
-        "Stop-Service -Name wuauserv -Force; Remove-Item -Path C:\\Windows\\SoftwareDistribution\\Download\\* -Recurse -Force -ErrorAction SilentlyContinue; Start-Service -Name wuauserv"
+        "Stop-Service -Name wuauserv -Force -ErrorAction SilentlyContinue; Stop-Service -Name bits -Force -ErrorAction SilentlyContinue; Remove-Item -Path C:\\Windows\\SoftwareDistribution\\Download\\* -Recurse -Force -ErrorAction SilentlyContinue; Start-Service -Name bits -ErrorAction SilentlyContinue; Start-Service -Name wuauserv -ErrorAction SilentlyContinue"
       ],
       "undo_command": null
     },
@@ -327,15 +327,19 @@
     {
       "id": "gameBar",
       "name": "Disable Xbox Game Bar",
-      "description": "Disables Game Bar overlay. Reduces resource usage during gaming.",
+      "description": "Disables Game Bar overlay, the Win+G startup panel, and its background capture service. Reduces resource usage during gaming.",
       "recommended": false,
       "impact": "Gaming +",
-      "command": "registry",
-      "registry_path": "HKCU:\\Software\\Microsoft\\GameBar",
-      "registry_name": "ShowStartupPanel",
-      "registry_value": 0,
-      "registry_type": "DWORD",
-      "undo_value": 1
+      "command": "powershell",
+      "args": [
+        "-Command",
+        "New-Item -Path 'HKCU:\\Software\\Microsoft\\GameBar' -Force | Out-Null; Set-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\GameBar' -Name 'ShowStartupPanel' -Value 0 -Type DWord -Force; Set-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\GameBar' -Name 'UseNexusForGameBarEnabled' -Value 0 -Type DWord -Force; New-Item -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\GameDVR' -Force | Out-Null; Set-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\GameDVR' -Name 'AppCaptureEnabled' -Value 0 -Type DWord -Force"
+      ],
+      "undo_command": "powershell",
+      "undo_args": [
+        "-Command",
+        "Set-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\GameBar' -Name 'ShowStartupPanel' -Value 1 -Type DWord -Force -ErrorAction SilentlyContinue; Set-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\GameBar' -Name 'UseNexusForGameBarEnabled' -Value 1 -Type DWord -Force -ErrorAction SilentlyContinue; Set-ItemProperty -Path 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\GameDVR' -Name 'AppCaptureEnabled' -Value 1 -Type DWord -Force -ErrorAction SilentlyContinue"
+      ]
     },
     {
       "id": "gameDVR",
@@ -665,12 +669,12 @@
       "command": "powershell",
       "args": [
         "-Command",
-        "$cs=Get-CimInstance Win32_ComputerSystem; if($cs.AutomaticManagedPagefile){ $cs | Set-CimInstance -Property @{AutomaticManagedPagefile=$false} }; $ram=[math]::Round($cs.TotalPhysicalMemory/1GB); $min=$ram*512; $max=$ram*1024; $pf=Get-CimInstance -ClassName Win32_PageFileSetting -ErrorAction SilentlyContinue; if($pf){ $pf | Set-CimInstance -Property @{InitialSize=$min;MaximumSize=$max} } else { New-CimInstance -ClassName Win32_PageFileSetting -Property @{Name='C:\\pagefile.sys';InitialSize=$min;MaximumSize=$max} }"
+        "$cs=Get-CimInstance Win32_ComputerSystem; if($cs.AutomaticManagedPagefile){ $cs | Set-CimInstance -Property @{AutomaticManagedPagefile=$false} }; $ram=[math]::Round($cs.TotalPhysicalMemory/1GB); $min=$ram*512; $max=$ram*1024; $sysDrive=$env:SystemDrive; Set-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Memory Management' -Name PagingFiles -Value \"$sysDrive\\pagefile.sys $min $max\" -Type MultiString -Force"
       ],
       "undo_command": "powershell",
       "undo_args": [
         "-Command",
-        "$cs=Get-CimInstance Win32_ComputerSystem; $cs | Set-CimInstance -Property @{AutomaticManagedPagefile=$true}"
+        "$cs=Get-CimInstance Win32_ComputerSystem; $cs | Set-CimInstance -Property @{AutomaticManagedPagefile=$true}; Remove-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Memory Management' -Name PagingFiles -ErrorAction SilentlyContinue"
       ]
     },
     {
@@ -734,7 +738,7 @@
       "command": "powershell",
       "args": [
         "-Command",
-        "$domains=@('vortex.data.microsoft.com','watson.telemetry.microsoft.com','telemetry.microsoft.com'); foreach($d in $domains){ try{ $ips=(Resolve-DnsName -Name $d -ErrorAction Stop | Where-Object {$_.IPAddress}).IPAddress; if($ips){ New-NetFirewallRule -DisplayName \"Block $d\" -Direction Outbound -RemoteAddress $ips -Action Block -ErrorAction SilentlyContinue } }catch{} }"
+        "$domains=@('vortex.data.microsoft.com','vortex-win-data.microsoft.com','watson.telemetry.microsoft.com','telemetry.microsoft.com','settings-win.data.microsoft.com','v10.events.data.microsoft.com','v20.events.data.microsoft.com'); foreach($d in $domains){ try{ $ips=(Resolve-DnsName -Name $d -ErrorAction Stop | Where-Object {$_.IPAddress}).IPAddress; if($ips){ New-NetFirewallRule -DisplayName \"Block $d\" -Direction Outbound -RemoteAddress $ips -Action Block -ErrorAction SilentlyContinue } }catch{} }"
       ],
       "undo_command": "powershell",
       "undo_args": [
@@ -788,17 +792,21 @@
     {
       "id": "meltdownSpectre",
       "name": "Disable Meltdown/Spectre Mitigations",
-      "description": "Removes CPU vulnerability patches for ~30% better performance. Only if you understand the security risk.",
+      "description": "Removes CPU vulnerability patches for ~30% better performance. Only if you understand the security risk. Requires both FeatureSettingsOverride and FeatureSettingsOverrideMask to be set (per Microsoft KB4073119) for the change to take effect.",
       "recommended": false,
       "impact": "CPU ++",
       "drawback": "Security risk",
       "warning": true,
-      "command": "registry",
-      "registry_path": "HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Memory Management",
-      "registry_name": "FeatureSettingsOverride",
-      "registry_value": 3,
-      "registry_type": "DWORD",
-      "undo_value": 0
+      "command": "powershell",
+      "args": [
+        "-Command",
+        "Set-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Memory Management' -Name FeatureSettingsOverride -Value 3 -Type DWord -Force; Set-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Memory Management' -Name FeatureSettingsOverrideMask -Value 3 -Type DWord -Force"
+      ],
+      "undo_command": "powershell",
+      "undo_args": [
+        "-Command",
+        "Remove-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Memory Management' -Name FeatureSettingsOverride -ErrorAction SilentlyContinue; Remove-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Memory Management' -Name FeatureSettingsOverrideMask -ErrorAction SilentlyContinue"
+      ]
     },
     {
       "id": "errorReporting",
