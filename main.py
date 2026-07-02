@@ -2,7 +2,7 @@
 WinOptimizer Pro - Professional Windows Performance Optimizer
 A safe, modern Windows optimization tool with Fluent Design dark theme
 
-Version: 1.3.1 - Free/Pro Edition (license management UI, hardened license storage)
+Version: 1.3.3 - Free/Pro Edition (installer upgrade flow, license-safe uninstall)
 Author: João Filipe Reis Peixoto
 M.Sc. Student in Critical Computing System Engineering
 Copyright (c) 2025 João Filipe Reis Peixoto. All rights reserved.
@@ -258,7 +258,7 @@ class WinOptimizer(ctk.CTk):
             text_color=COLORS["text_secondary"],
         ).pack(pady=SPACING["xs"])
 
-        version = "Version 1.3.1 - Free Edition" if not IS_PRO else "Version 1.3.1 - Pro Edition"
+        version = "Version 1.3.3 - Free Edition" if not IS_PRO else "Version 1.3.3 - Pro Edition"
         ctk.CTkLabel(
             header,
             text=version,
